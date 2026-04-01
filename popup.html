@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HiredHub</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- ============================================
+       Main Application Container
+       ============================================ -->
+  <div id="app">
+    <!-- Header: App title and add button -->
+    <header class="header">
+      <h1 class="logo">HiredHub</h1>
+      <!-- Add new application button - opens form modal -->
+      <button id="addBtn" class="btn-add" title="Add Application">+</button>
+    </header>
+
+    <!-- Stats Bar: Application counts by status (synced with chrome.storage) -->
+    <div class="stats-bar">
+      <span class="stat-pill stat-applied">Applied: <strong id="statApplied">0</strong></span>
+      <span class="stat-pill stat-interview">Interview: <strong id="statInterview">0</strong></span>
+      <span class="stat-pill stat-offer">Offer: <strong id="statOffer">0</strong></span>
+      <span class="stat-pill stat-rejected">Rejected: <strong id="statRejected">0</strong></span>
+    </div>
+
+    <!-- Filters: Status, platform, and sort controls -->
+    <div class="filters">
+      <!-- Filter by application status -->
+      <select id="filterStatus" class="filter-select">
+        <option value="all">All Status</option>
+        <option value="applied">Applied</option>
+        <option value="interview">Interview</option>
+        <option value="offer">Offer</option>
+        <option value="rejected">Rejected</option>
+      </select>
+      <!-- Filter by job platform/source -->
+      <select id="filterPlatform" class="filter-select">
+        <option value="all">All Platforms</option>
+        <option value="linkedin">LinkedIn</option>
+        <option value="indeed">Indeed</option>
+        <option value="glassdoor">Glassdoor</option>
+        <option value="remoteok">RemoteOK</option>
+        <option value="other">Other</option>
+      </select>
+      <!-- Sort by application date -->
+      <select id="sortOrder" class="filter-select">
+        <option value="desc">Newest First</option>
+        <option value="asc">Oldest First</option>
+      </select>
+    </div>
+
+    <!-- Application List: Container for rendered application cards -->
+    <div id="appList" class="app-list">
+      <!-- Empty State: Shown when no applications exist -->
+      <div id="emptyState" class="empty-state">
+        <div class="empty-icon">💼</div>
+        <p class="empty-title">No applications yet</p>
+        <p class="empty-subtitle">Click the + button or press <kbd>N</kbd> to add your first application</p>
+        <p class="empty-hint">Track your job search journey and never miss a follow-up!</p>
+      </div>
+      <!-- No Results State: Shown when filters match nothing (hidden by default) -->
+      <div id="noResultsState" class="empty-state hidden">
+        <div class="empty-icon">🔍</div>
+        <p class="empty-title">No results found</p>
+        <p class="empty-subtitle">Try adjusting your filters or add a new application</p>
+      </div>
+      <!-- Cards rendered by JS in popup.js::renderApps() -->
+      </div>
+
+    <!-- Support Banner: Donation/support message -->
+    <div class="support-banner">
+      <p class="support-text">Did HiredHub help you land a job? 🚀 <a href="https://buymeacoffee.com/degorck" target="_blank" rel="noopener noreferrer">Buy me a coffee ☕</a></p>
+    </div>
+
+    <!-- Footer: Export and import buttons -->
+    <footer class="footer">
+      <!-- Export row: Save data to file -->
+      <div class="btn-row">
+        <button id="exportCsv" class="btn-export">Export CSV</button>
+        <button id="exportJson" class="btn-export">Export JSON</button>
+      </div>
+      <!-- Import row: Load data from file -->
+      <div class="btn-row">
+        <button id="importCsvBtn" class="btn-import">Import CSV</button>
+        <button id="importJsonBtn" class="btn-import">Import JSON</button>
+      </div>
+      <!-- Hidden file inputs triggered by import buttons -->
+      <input type="file" id="importCsv" accept=".csv" hidden>
+      <input type="file" id="importJson" accept=".json" hidden>
+      <!-- Version badge loaded from manifest -->
+      <span id="versionBadge" class="version-badge"></span>
+    </footer>
+  </div>
+
+  <!-- ============================================
+       Form Modal: Add/Edit Application
+       ============================================ -->
+  <!-- Hidden by default, shown via JS when adding/editing -->
+  <div id="formModal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+      <!-- Modal title changes based on add vs edit mode -->
+      <h2 class="modal-title" id="modalTitle">Add Application</h2>
+      
+      <!-- Application form - submits to popup.js::handleFormSubmit() -->
+      <form id="appForm" class="app-form">
+        <!-- Hidden field stores application ID when editing -->
+        <input type="hidden" id="appId">
+        
+        <!-- Required fields -->
+        <div class="form-group">
+          <label for="company">Company *</label>
+          <input type="text" id="company" required maxlength="200" placeholder="e.g., Acme Corp">
+        </div>
+        
+        <div class="form-group">
+          <label for="position">Position *</label>
+          <input type="text" id="position" required maxlength="200" placeholder="e.g., Frontend Developer">
+        </div>
+        
+        <!-- Platform and Status dropdowns -->
+        <div class="form-row">
+          <div class="form-group">
+            <label for="platform">Platform *</label>
+            <select id="platform" required>
+              <option value="">Select...</option>
+              <option value="linkedin">LinkedIn</option>
+              <option value="indeed">Indeed</option>
+              <option value="glassdoor">Glassdoor</option>
+              <option value="remoteok">RemoteOK</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="status">Status *</label>
+            <select id="status" required>
+              <option value="">Select...</option>
+              <option value="applied">Applied</option>
+              <option value="interview">Interview</option>
+              <option value="offer">Offer</option>
+              <option value="rejected">Rejected</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label for="dateApplied">Date Applied *</label>
+            <input type="date" id="dateApplied" required>
+          </div>
+        </div>
+        
+        <!-- Optional fields -->
+        <div class="form-group">
+          <label for="salary">Salary (USD/year)</label>
+          <input type="number" id="salary" min="0" placeholder="e.g., 120000">
+        </div>
+        
+        <div class="form-group">
+          <label for="link">Job Link</label>
+          <input type="url" id="link" maxlength="2000" placeholder="https://">
+        </div>
+        
+        <div class="form-group">
+          <label for="notes">Notes</label>
+          <textarea id="notes" maxlength="2000" rows="3" placeholder="Any additional notes..."></textarea>
+        </div>
+        
+        <!-- Contact information -->
+        <div class="form-group">
+          <label for="contactName">Contact Name</label>
+          <input type="text" id="contactName" maxlength="200" placeholder="e.g., John Doe">
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label for="contactMedium">Contact Medium</label>
+            <select id="contactMedium">
+              <option value="">Select...</option>
+              <option value="email">Email</option>
+              <option value="phone">Phone</option>
+              <option value="linkedin">LinkedIn</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="contactValue">Contact Value</label>
+          <input type="text" id="contactValue" maxlength="200" placeholder="email or phone">
+        </div>
+        
+        <div class="form-group">
+          <label for="companyUrl">Company URL</label>
+          <input type="url" id="companyUrl" maxlength="2000" placeholder="https://company.com">
+        </div>
+        
+        <!-- Form actions -->
+        <div class="form-actions">
+          <button type="button" id="cancelBtn" class="btn-secondary">Cancel</button>
+          <button type="submit" class="btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================
+       Import Confirmation Modal
+       ============================================ -->
+  <!-- Shown after selecting import file - asks merge or replace -->
+  <div id="importModal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content modal-small">
+      <h2 class="modal-title">Import Applications</h2>
+      <p class="import-info">Found <strong id="importCount">0</strong> applications.</p>
+      <p class="import-question">What would you like to do?</p>
+      <div class="import-actions">
+        <!-- Merge: Add to existing applications -->
+        <button id="importMergeBtn" class="btn-primary">Add to existing</button>
+        <!-- Replace: Clear all and import new -->
+        <button id="importReplaceBtn" class="btn-secondary">Replace all</button>
+        <!-- Cancel: Close modal without importing -->
+        <button id="importCancelBtn" class="btn-text">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container: Notification messages rendered here -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- Scripts: Load in order (utils first for shared functions) -->
+  <script src="utils.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
